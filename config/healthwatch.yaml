@@ -1,0 +1,30 @@
+# QNX HealthWatch — example configuration (v1)
+#
+# healthd reads this file, spawns each `command`, checks once per
+# `check_interval`, and restarts a dead process with exponential
+# backoff (restart_delay, doubled each quick death, capped at 30s).
+#
+# Fields per process:
+#   name          — shown in status / report; must be unique
+#   command       — run via /bin/sh -c, so arguments and pipes work
+#   restart       — "always" (default) or "never"
+#   max_restarts  — 0 = unlimited; >0 stops after that many restarts
+#   restart_delay — initial backoff in seconds (default 1)
+
+check_interval: 1
+status_file: /dev/shmem/health.json
+events_file: /dev/shmem/health-events.jsonl
+
+processes:
+  - name: crashdemo
+    command: /usr/bin/crashdemo
+    restart: always
+    max_restarts: 0
+    restart_delay: 1
+
+  # Add your own critical process here, e.g.:
+  # - name: sensor-gateway
+  #   command: /usr/bin/sensor-gateway --port 9000
+  #   restart: always
+  #   max_restarts: 5
+  #   restart_delay: 2
