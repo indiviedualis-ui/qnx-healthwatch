@@ -1,0 +1,14 @@
+{"ts":"2026-11-22T18:56:54Z","process":"crashdemo","event":"started","pid":16593,"exit_code":0,"restarts":0}
+{"ts":"2026-11-22T18:56:54Z","process":"sleeper","event":"started","pid":16594,"exit_code":0,"restarts":0}
+{"ts":"2026-11-22T18:56:57Z","process":"crashdemo","event":"exited","pid":16593,"exit_code":139,"restarts":0}
+{"ts":"2026-11-22T18:56:57Z","process":"crashdemo","event":"restart_scheduled","pid":0,"exit_code":139,"restarts":1}
+{"ts":"2026-11-22T18:56:58Z","process":"crashdemo","event":"restarted","pid":16602,"exit_code":0,"restarts":1}
+{"ts":"2026-11-22T18:57:01Z","process":"crashdemo","event":"exited","pid":16602,"exit_code":139,"restarts":1}
+{"ts":"2026-11-22T18:57:01Z","process":"crashdemo","event":"restart_scheduled","pid":0,"exit_code":139,"restarts":2}
+{"ts":"2026-11-22T18:57:03Z","process":"crashdemo","event":"restarted","pid":16609,"exit_code":0,"restarts":2}
+{"ts":"2026-11-22T18:57:06Z","process":"crashdemo","event":"exited","pid":16609,"exit_code":139,"restarts":2}
+{"ts":"2026-11-22T18:57:06Z","process":"crashdemo","event":"restart_scheduled","pid":0,"exit_code":139,"restarts":3}
+{"ts":"2026-11-22T18:57:10Z","process":"crashdemo","event":"restarted","pid":16616,"exit_code":0,"restarts":3}
+{"ts":"2026-11-22T18:57:13Z","process":"crashdemo","event":"exited","pid":16616,"exit_code":139,"restarts":3}
+{"ts":"2026-11-22T18:57:13Z","process":"crashdemo","event":"restart_scheduled","pid":0,"exit_code":139,"restarts":4}
+{"ts":"2026-11-22T18:57:14Z","process":"sleeper","event":"stopped","pid":16594,"exit_code":0,"restarts":0}

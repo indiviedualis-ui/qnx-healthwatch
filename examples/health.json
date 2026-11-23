@@ -1,0 +1,1 @@
+{"daemon_uptime_seconds":68,"generated_at":"2026-11-23T10:38:47Z","processes":[{"command":"/usr/bin/crashdemo","last_exit_code":139,"max_restarts":0,"name":"crashdemo","pid":0,"restarts":5,"state":"restarting","uptime_seconds":52}],"version":"1.0.0"}
