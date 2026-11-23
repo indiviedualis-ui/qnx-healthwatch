@@ -1,0 +1,8 @@
+out/
+out-linux/
+__pycache__/
+*.pyc
+healthwatch-report.html
+/tmp/
+*.ifs
+*.img
