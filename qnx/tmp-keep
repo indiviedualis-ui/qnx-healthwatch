@@ -1,0 +1,6 @@
+# Placeholder so mkifs creates /tmp in the image.
+# ([type=dir] /tmp does NOT work — mkifs silently ignores it, and
+# healthd then fails "cannot write status /tmp/health.json.tmp:
+# No such file or directory". A real file under /tmp forces mkifs
+# to create the directory. This file is otherwise unused.)
+HealthWatch runtime directory.

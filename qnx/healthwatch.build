@@ -1,0 +1,224 @@
+# QNX HealthWatch — mkifs buildfile (QNX 8.0, x86_64 QEMU)
+#
+# Build the boot image from the SDP 8.0 host (after sourcing qnxsdp-env.sh):
+#   cd qnx
+#   cp ../out/healthd ../out/crashdemo .   # binaries must sit next to this file
+#   mkifs healthwatch.build healthwatch.ifs
+#
+# NOTE (verified 2026-11-23 on SDP 8.0): do NOT use mkqnximage here —
+# `mkqnximage --build=healthwatch.build` is rejected ("--build option
+# has invalid value"), and the [virtual=x86_64,elf] format fails with
+# "Host file 'elf.boot' not available" (elf.boot ships with a BSP, not
+# the base SDP). The multiboot format below is what QEMU -kernel loads,
+# matching QNX's own "From The Board Up" QEMU series.
+#
+# NOTE (verified 2026-11-23 via `dumpifs`): mkifs does NOT
+# automatically include the executables named in the .script, nor
+# their shared libraries. The first image contained only startup,
+# procnto, .script, the config symlink and two dangling symlinks —
+# every .script command then failed "Unable to start ... (2)".
+# Every binary and every .so the image needs MUST be listed below.
+# If mkifs reports "Host file 'X' not available", that file is not
+# on the search path — check its name/location and adjust.
+#
+# NOTE (verified 2026-11-23 by listing the target tree): this is
+# QNX 8.0, NOT 7.x — the names are different:
+# - MKIFS_PATH is EMPTY; a [search] line OVERRIDES the built-in
+#   default, so it must list every dir the image needs. mkifs does
+#   NOT expand $VAR in the buildfile (a $QNX_TARGET [search] line
+#   fails at the first lookup) and does NOT search subdirectories
+#   of the [search] dirs. multiboot.boot lives in boot/sys/, NOT
+#   in boot/ itself.
+# - The base SDP target has NO mkdir/cp/ls (core file utilities
+#   are absent) — do not list them.
+# - Library versions (verified by listing lib/ and usr/lib/):
+#   libc.so.6, libm.so.3, libsocket.so.4, libslog2.so.1,
+#   libcrypto.so.3, libqcrypto.so.1.0, libz.so.2, libcam.so.2,
+#   libgcc_s.so.1, libpci.so.3.0, libsecpol.so.1, libfdt.so.1,
+#   loader ldqnx-64.so.2. (The .so.2 names are QNX 7.x.)
+#   libcrypt and libiofunc do NOT exist as separate .so files.
+#   ifconfig needs libexpat.so.2 + libjail.so.1, sshd needs
+#   libpam.so.2 + libregex.so.1, random needs libqh.so.1.
+#   (The loader reports only the FIRST missing library, so each
+#   rebuild reveals the next one — add them as they appear.)
+# - Networking is io-sock, not io-pkt: `io-sock -m phy -m pci -d em`
+#   loads the Intel PRO/1000 driver (devs-em.so) for QEMU's e1000
+#   NIC; the interface is em0 (not wm0). No devnp-e1000.so and no
+#   io-pkt-v6-hc exist in SDP 8.0. The io-sock/ dirs do not exist
+#   either — sbin/ ifconfig/route/io-sock are the io-sock versions.
+# - io-sock EXITS at startup if /dev/random does not exist
+#   ("Cannot open /dev/random"), so the `random` service must be
+#   started (and waited for) BEFORE io-sock. Plain `random` fails
+#   "Random init failed" without /etc/qcrypto.conf (see below);
+#   the -p flag does NOT exist in QNX 8.0's random
+#   ("Unexpected option: p") — do not use it.
+# - sshd refuses a bare name ("sshd requires execution with an
+#   absolute path") — run it as /proc/boot/sshd.
+# - `random` needs /etc/qcrypto.conf or qcrypto refuses to
+#   initialise ("failed to load configuration file
+#   '/etc/qcrypto.conf'") and random exits "Random init failed".
+#   The file is NOT shipped in the SDP target — provide it
+#   (openssl-3 tags=*) plus the plugin qcrypto-openssl-3.so.
+# - devb-ram fails (needs io-blk.so, not in the image) and the
+#   `mount -t ram /dev/shmem /tmp` line is wrong (/dev/shmem is a
+#   directory, so mount fails "Is a directory"). Both are removed;
+#   /tmp is a plain directory in the image, which is enough.
+# - [type=dir] does NOT create a directory (mkifs silently ignores
+#   it — healthd then fails "cannot write status /tmp/health.json.tmp:
+#   No such file or directory"). /tmp is created by placing a real
+#   file under it (/tmp/.keep, see below).
+# - Directories in the image are READ-ONLY at runtime: even though
+#   /tmp exists and holds /tmp/.keep, creating a new file in it
+#   fails "No such file or directory" (verified 2026-11-23 — the
+#   shell itself cannot `echo test > /tmp/test.txt`). Runtime files
+#   healthd writes (status + events) therefore live in /dev/shmem
+#   (a RAM filesystem created by procnto, verified writable the
+#   same day), NOT in /tmp. See config/healthwatch.yaml.
+# - [type=link] with a bare target is UNRELIABLE (crashdemo kept
+#   exiting 127 because /usr/bin/crashdemo did not resolve). Files
+#   that must exist at an absolute path (/bin/sh, /usr/bin/*) are
+#   placed as REAL FILES below, not links.
+# - healthd spawns /usr/bin/crashdemo itself via /bin/sh -c, so the
+#   .script does NOT start crashdemo, but /bin/sh MUST exist in the
+#   image and /usr/bin/crashdemo must resolve.
+[search=/home/ali_drajat/qnx800/target/qnx/x86_64/boot:/home/ali_drajat/qnx800/target/qnx/x86_64/boot/sys:/home/ali_drajat/qnx800/target/qnx/x86_64/bin:/home/ali_drajat/qnx800/target/qnx/x86_64/usr/bin:/home/ali_drajat/qnx800/target/qnx/x86_64/sbin:/home/ali_drajat/qnx800/target/qnx/x86_64/usr/sbin:/home/ali_drajat/qnx800/target/qnx/x86_64/lib:/home/ali_drajat/qnx800/target/qnx/x86_64/usr/lib:/home/ali_drajat/qnx800/target/qnx/x86_64/lib/dll:/home/ali_drajat/healthwatch/qnx]
+# NOTE (2026-11-23): [+compress] was removed during debugging, but
+# compression is RULED OUT as the cause — the uncompressed image
+# (1,183,812 bytes) falls through to network boot the same way
+# ("Booting from ROM.."). The kernel boots with the QEMU flags in
+# scripts/boot-qemu.sh (QNX "From The Board Up" set); the original
+# -cpu qemu64 / -smp 2 / -nographic set did NOT load the kernel.
+
+[virtual=x86_64,multiboot] .bootstrap = {
+    startup-x86 -D 8250 -v
+    PATH=/proc/boot:/bin:/usr/bin:/sbin:/usr/sbin LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib:/lib/dll procnto-smp-instr -v
+}
+
+[+script] .script = {
+    devc-ser8250 -e -b115200 0x3f8,4 &
+    waitfor /dev/ser1 4
+    reopen /dev/ser1
+
+    # System logger — healthd writes here via slog2.
+    slogger2 &
+    waitfor /dev/shmem/slogger2 4
+
+    pipe &
+
+    # Random device — io-sock exits at startup without /dev/random.
+    # Plain `random` needs /etc/qcrypto.conf (see below); the -p
+    # flag does NOT exist in QNX 8.0's random ("Unexpected option:
+    # p"). slogger2 must run first (it does).
+    random &
+    waitfor /dev/random 4
+
+    # Networking + SSH (host reaches the target on localhost:2222).
+    # QNX 8.0: io-sock replaces io-pkt; -d em = devs-em.so (Intel
+    # PRO/1000 = QEMU e1000), interface em0. Needs mods-pci.so.
+    io-sock -m phy -m pci -d em &
+    waitfor /dev/socket 4
+    ifconfig em0 10.0.2.15 netmask 255.255.255.0 up
+    route add default 10.0.2.2
+    /proc/boot/sshd &
+    waitfor /dev/socket 2
+
+    # HealthWatch: daemon + demo app it supervises.
+    # healthd spawns /usr/bin/crashdemo itself (see config), so no
+    # separate crashdemo line is needed here.
+    # NOTE: -f (foreground, no daemon() call) — the daemonized
+    # form never creates /dev/shmem/health.json even though the
+    # foreground form writes it fine (verified 2026-11-23); the
+    # implicit daemon() declaration is the suspect. Running -f
+    # backgrounded (&) keeps the same supervisor loop.
+    healthd -f -c /etc/healthwatch.yaml &
+    waitfor /dev/shmem/health.json 4
+
+    [+session] sh -l
+}
+
+# --- Files copied into the image (bare name -> /proc/boot/<name>) ---
+#
+# Executables used by the .script above (mkifs finds them in the
+# target bin dirs via the [search] line):
+devc-ser8250
+slogger2
+pipe
+random
+mount
+waitfor
+io-sock
+ifconfig
+route
+sshd
+slog2info
+pidin
+slay
+sh
+ksh
+healthd
+crashdemo
+
+# Shared libraries the executables above need at load time.
+# QNX 8.0 versions (see NOTE above) — NOT the QNX 7.x .so.2 names.
+# (Without these, every program fails "Unable to start ... (2)".)
+libc.so.6
+libm.so.3
+libsocket.so.4
+libcam.so.2
+libslog2.so.1
+libslog2parse.so.1
+libslog2shim.so.1
+libcrypto.so.3
+libqcrypto.so.1.0
+libz.so.2
+libgcc_s.so.1
+libpci.so.3.0
+libpci_hw_common.so.3.0
+libsecpol.so.1
+libsecpol-gen.so.1
+libfdt.so.1
+libpam.so.2
+libexpat.so.2
+libqh.so.1
+libjail.so.1
+libregex.so.1
+qcrypto-openssl-3.so
+
+# The dynamic loader (QNX 8.0 x86_64: ldqnx-64.so.2). The kernel
+# loads it by the absolute INTERP path in each executable, so it
+# is placed as a real file at every path it could be expected at.
+ldqnx-64.so.2
+/usr/lib/ldqnx-64.so.2 = ldqnx-64.so.2
+/lib/ldqnx-64.so.2 = ldqnx-64.so.2
+
+# Network drivers for io-sock, at their standard location /lib/dll/.
+# (io-sock finds drivers in /lib/dll/ and on LD_LIBRARY_PATH.)
+/lib/dll/devs-em.so = devs-em.so
+/lib/dll/mods-pci.so = mods-pci.so
+/lib/dll/mods-phy.so = mods-phy.so
+
+# /tmp must exist as a mount point and for healthd's status files.
+# A real file under /tmp forces mkifs to create the directory
+# ([type=dir] does not work — see NOTE above).
+/tmp/.keep = tmp-keep
+
+# healthd spawns the supervised process via /bin/sh -c, so /bin/sh
+# must exist as a REAL FILE (a [type=link] does not resolve
+# reliably — see NOTE above).
+/bin/sh = sh
+
+# Our own binaries, reachable under /usr/bin as the config uses
+# them (real files, not links — see NOTE above).
+/usr/bin/healthd = healthd
+/usr/bin/crashdemo = crashdemo
+
+# The HealthWatch config, copied in as a real file at /etc/.
+# (NOT [type=link]: a link alone leaves no file in the image.)
+/etc/healthwatch.yaml = ../config/healthwatch.yaml
+
+# qcrypto configuration — the `random` service needs it, or
+# qcrypto refuses to initialise and `random` exits ("Random init
+# failed"), leaving no /dev/random so io-sock cannot start.
+# (QNX 8.0: the OpenSSL plugin is openssl-3; see qcrypto.conf.)
+# The plugin DLL qcrypto-openssl-3.so is in the libraries above.
+/etc/qcrypto.conf = qcrypto.conf
